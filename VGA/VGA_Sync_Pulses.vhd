@@ -1,0 +1,98 @@
+--------------------------------------------------------------
+-- Project: TFG
+-- Author: Jesús Fuente Porta
+-- Date: (2019/03/03) (10:37:50)
+-- File: VGA_Sync_Pulses.vhd
+--------------------------------------------------------------
+-- Description:
+--
+-- This vhdl module generates VGA Synchronization pulses for
+-- VGA monitor. This module is designed for 640x480 active
+-- display and 800x525 total pixel display with a 25 MHz
+-- input clock.
+--------------------------------------------------------------
+
+library IEEE;
+use IEEE.std_logic_1164.all;
+use IEEE.numeric_std.all;
+
+entity VGA_Sync_Pulses is
+	generic (
+		g_TOTAL_COLS  	: integer								:= 800;
+		g_TOTAL_ROWS  	: integer								:= 525;
+		g_ACTIVE_COLS 	: integer								:= 640;
+		g_ACTIVE_ROWS 	: integer								:= 480;
+		g_Clk_Div		: integer								:= 2			
+    );
+	
+	port (
+		i_RST			: in std_logic;
+		i_Clk       	: in  std_logic;
+		o_HSync     	: out std_logic;
+		o_VSync     	: out std_logic
+    );
+end entity VGA_Sync_Pulses;
+
+architecture rtl of VGA_Sync_Pulses is
+
+	signal r_Clk_Div	: integer range g_Clk_Div downto 0		:= 0;
+	
+	signal r_Col_Count 	: integer range g_TOTAL_COLS-1 downto 0	:= 0;
+	signal r_Row_Count 	: integer range g_TOTAL_ROWS-1 downto 0 := 0;
+
+begin
+
+	-- -- -- -- -- -- -- -- -- -- -- --
+	-- Process to generate counters
+	-- -- -- -- -- -- -- -- -- -- -- --
+	p_Row_Col_Count:
+		process (i_RST, i_Clk, r_Clk_Div, r_Col_Count, r_Row_Count)
+		begin
+		
+			if (i_RST = '0') then
+				
+				r_Clk_Div <= 0;
+				r_Col_Count <= 0;
+				r_Row_Count <= 0;
+			
+			elsif (rising_edge(i_Clk)) then
+				
+				if (r_Clk_Div = g_Clk_Div-1) then
+				
+					r_Clk_Div <= 0;
+			
+					if (r_Col_Count = g_TOTAL_COLS-1) then
+						
+						r_Col_Count <= 0;
+						
+						if (r_Row_Count = g_TOTAL_ROWS-1) then
+						
+							r_Row_Count <= 0;
+						
+						else
+						
+							r_Row_Count <= r_Row_Count + 1;
+						
+						end if;
+						
+					else
+					
+						r_Col_Count <= r_Col_Count + 1;
+					
+					end if;
+				
+				else
+				
+					r_Clk_Div <= r_Clk_Div + 1;
+				
+				end if;
+			
+			end if;
+
+		end process p_Row_Col_Count;
+	
+	concurrent_logic:
+		o_HSync <= '1' when r_Col_Count < g_ACTIVE_COLS else '0';
+		o_VSync <= '1' when r_Row_Count < g_ACTIVE_ROWS else '0';
+  
+end architecture rtl;
